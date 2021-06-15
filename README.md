@@ -66,6 +66,7 @@ A checklist of what you need and what will be used in this guide:
 
 * Free DNS name for your DKE service
   * *lkb-on.azure.gegenleitner.eu* will be used.
+  * If you do not want to use an own domain, you can also facilitate Azure's cloudapp domain to assign a FQDN.
 * Azure account capable of deploying azure resources
 * Working M365 tenant
 * Tool for SSH-ing into your Ubuntu Server (i. e. putty) on your workstation
@@ -80,16 +81,58 @@ Watch this small video to setup all required resources:
 
 * New dedicated resource group (*luna-key-broker-demo*)
 * Ubuntu Server 20.04 LTS (*management-linux*)
-* AKS cluster with ACR (*dke-cluster* and *dke-repository*)
+* AKS cluster with ACR (*dke-cluster* and *dkerepository*)
 * Windows 10 client (*dke-client*)
 
-### 2. Prepare your CloudHSM and create keys on it
+#### Install required software on Ubuntu
+
+Follow the steps below or just copy-paste them into an open SSH-session on your Ubuntu Server:
+
+```shell
+# Change into your user's home directory
+cd ~
+# Ensure git is installed
+sudo apt-get update && sudo apt-get install -y git
+# Checkout this git repository to have all scripts at hand
+git clone https://github.com/martingegenleitner/thales-dke-service-setup.git
+# Call the installer script to get all required tools onto your management machine
+~/thales-dke-service-setup/mgmt-linux/install_tooling.sh
+# Create a few directories to organize your tooling
+mkdir -p ~/hsm
+mkdir -p ~/k8s
+```
+
+### 2. Prepare your CloudHSM
 
 #### Create a service client to a new CloudHSM service
 
-Watch the video on how to create a new HSMonDemand service client on DPoD.
+Watch the video on how to create a new HSMonDemand service client on DPoD. Additional information can be found at <https://thalesdocs.com/dpod/services/hsmod_services/hsmod_add_service/index.html>.
 
 #### Initialize CloudHSM and its roles
+
+Copy the service client (*setup-lkb.zip*) via scp onto the Ubuntu server into */home/azureuser/hsm* and open a SSH-session to the host into this directory. Then follow the commands from below to setup the service. Additional information can be found at <https://thalesdocs.com/dpod/services/hsmod_services/hsmod_linux_client/index.html>.
+
+```shell
+# Change into the hsm directory
+cd ~/hsm
+# Unpack the setup package
+unzip ./setup-lkb.zip
+# Unpack the linux client
+tar xvf cvclient-min.tar
+# Configure environment
+source ./setenv
+# Start the hsm configuration tool "lunacm"
+# If the command executes with no errors, your connection is working correctly.
+./bin/64/lunacm
+```
+
+The following commands must be called in the context of the lunacm cli tool. They are mostly interactive so it is best to execute them one by one. In this guide we will use a fixed set of passwords in order to make mapping of them to config files easier. **Use your own custom secrets in a production environment!**
+
+```shell
+# Initialize the partition. During this process the cloning domain and
+# Partition Security Officer (PO/SO) credentials are set.
+partition init -label lkb-hsm 
+```
 
 #### Create some keys for DKE
 
