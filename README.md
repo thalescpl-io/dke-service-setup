@@ -87,6 +87,8 @@ Watch this small video to setup all required resources:
   * *dkerepository* for ACR might be shown as taken, because this must be a unique name across Azure. If this is the case, just select another name (required changes will be noted in the guide later)
 * Windows 10 client (*dke-client*)
 
+<<<<<VIDEO>>>>>
+
 #### Install required software on Ubuntu
 
 Follow the steps below or just copy-paste them into an open SSH-session on your Ubuntu Server:
@@ -111,6 +113,8 @@ mkdir -p ~/k8s
 #### Create a service client to a new CloudHSM service
 
 Watch the video on how to create a new HSMonDemand service client on DPoD. Additional information can be found at <https://thalesdocs.com/dpod/services/hsmod_services/hsmod_add_service/index.html>.
+
+<<<<<VIDEO>>>>>
 
 #### Initialize CloudHSM and its roles
 
@@ -237,8 +241,8 @@ docker push $ACR_NAME.azurecr.io/luna-key-broker-for-dke:v1.0
 ####
 # Create kubernetes resources on AKS
 ####
-# Copy all resources from this repository into your kubernetes directory
-cp 
+# Copy all resources/templates from this repository into your kubernetes directory
+cp ~/thales-dke-service-setup/dke-service/* .
 
 # Create a namespace for your dke service resources
 kubectl create namespace dke
@@ -247,9 +251,14 @@ helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
 # Use Helm to deploy an NGINX ingress controller
 helm install nginx-ingress ingress-nginx/ingress-nginx --namespace dke --set controller.replicaCount=2 --set controller.nodeSelector."beta\.kubernetes\.io/os"=linux --set defaultBackend.nodeSelector."beta\.kubernetes\.io/os"=linux --set controller.admissionWebhooks.patch.nodeSelector."beta\.kubernetes\.io/os"=linux
 
-# Create Secrets/Configs by uploading 
+# Create Secrets/Configs by uploading the previously created credentials and templates
+# Upload the Chrystoki.conf so that the LunaKeyBroker can connect to the Cloud HSM
 kubectl create secret generic luna-config-file --from-file=Chrystoki.conf --namespace dke
-kubectl create secret generic credentials --from-literal=password='yxcvbnm' --namespace dke
+# Upload the Crypto Officer password to grant the LunaKeyBroker access to the crypto material on the Cloud HSM
+kubectl create secret generic credentials --from-literal=password='asdfghj' --namespace dke
+# Upload a set of policies which define which user has access to which keys
+# The policy syntax is from the OpenPolicyAgent Framework. Take a look at https://www.openpolicyagent.org/ to read more about it.
+# The policies defined here grant every user access who holds an JWT containing a UPN value
 kubectl create secret generic auth-claim --from-file=opa_policies.rego --namespace dke
 
 # Label the dke namespace to disable resource validation
@@ -261,15 +270,39 @@ helm repo update
 # Install the cert-manager Helm chart
 helm install cert-manager jetstack/cert-manager --namespace dke --version v0.16.1 --set installCRDs=true --set nodeSelector."kubernetes\.io/os"=linux --set webhook.nodeSelector."kubernetes\.io/os"=linux --set cainjector.nodeSelector."kubernetes\.io/os"=linux
 
-# Create the cluster issuer
+# Finally deploy some kubernetes resources via yaml files.
+
+# Tweak the cluster issuer template to contain your mail address for cert expiry notifications
+sed -i "s/YOUR_MAIL_ADDRESS/$CERT_MASTER/g" cluster-issuer.yml
+# Create the cluster issuer who is responsible of issuing valid certificates to your ingress nodes
 kubectl apply -f cluster-issuer.yml
 
+# Tweak the key-broker template to fit your variables
+sed -i "s/YOUR_ACR_RESOURCE/$ACR_NAME/g" luna-key-broker.yml
+sed -i "s/YOUR_DKE_SERVICE_FQDN/$DKE_SERVICE_FQDN/g" luna-key-broker.yml
+sed -i "s/YOUR_TENANT_ID/$TENANT_ID/g" luna-key-broker.yml
 # Deploy the Key-Broker
 kubectl apply -f luna-key-broker.yml --namespace dke
 
+# Tweak the ingress template to contain the correct FQDN
+sed -i "s/YOUR_DKE_SERVICE_FQDN/$DKE_SERVICE_FQDN/g" ingress.yml
 # Deploy an ingress route
 kubectl apply -f ingress.yml --namespace dke
+
+####
+# Query the public IP of the cluster's ingress for setting up DNS
+####
+# Get the public IP of the cluster ingress by quering the services.
+# The EXTERNAL-IP of the service "nginx-ingress-ingress-nginx-controller" must be set
+# as an A-Record for the chosen FQDN of your DKE service.
+kubectl get services --namespace dke
 ```
+
+To finally set a DNS record to map your chosen FQDN to the now available public IP, go to your DNS provider to do this. If you have chosen to use the cloudapp DNS provided by Azure, follow the steps shown in next video to set the required FQDN on the IP of your AKS loadbalancer resource.
+
+<<<<<VIDEO>>>>>
+
+Now your DKE service is reachable over your selected FQDN.
 
 ### 4. Register the DKE service in Azure Active Directory
 
