@@ -73,21 +73,19 @@ A checklist of what you need and what will be used in this guide:
 * Working M365 tenant
 * Tool for SSH-ing into your Ubuntu Server (i. e. putty) on your workstation
 * Tool for SSH-Copy files to your Ubuntu Server (i. e. WinSCP, scp or pscp) on your workstation
-  * WinSCP will be used
+  * *WinSCP* will be used
 * RDP-Client on your workstation to access the Windows 10 test machine
   * Standard *Remote Desktop Connection* from Windows 10 will be used
 
 ### 1. Prepare your Azure environment
 
-Watch this small video to setup all required resources:
+Watch this small video ([link](https://youtu.be/45EN6CySi9c)) to setup all required resources:
 
 * New dedicated resource group (*luna-key-broker-demo*)
 * Ubuntu Server 20.04 LTS (*management-linux*)
 * AKS cluster with ACR (*dke-cluster* and *dkerepository*)
   * *dkerepository* for ACR might be shown as taken, because this must be a unique name across Azure. If this is the case, just select another name (required changes will be noted in the guide later)
 * Windows 10 client (*dke-client*)
-
-<<<<<VIDEO>>>>>
 
 #### Install required software on Ubuntu
 
@@ -112,9 +110,7 @@ mkdir -p ~/k8s
 
 #### Create a service client to a new CloudHSM service
 
-Watch the video on how to create a new HSMonDemand service client on DPoD. Additional information can be found at <https://thalesdocs.com/dpod/services/hsmod_services/hsmod_add_service/index.html>.
-
-<<<<<VIDEO>>>>>
+Watch the video ([link](https://youtu.be/3AuSA94XaaE)) on how to create a new HSMonDemand service client on DPoD. Additional information can be found at <https://thalesdocs.com/dpod/services/hsmod_services/hsmod_add_service/index.html>.
 
 #### Initialize CloudHSM and its roles
 
@@ -150,6 +146,8 @@ role login -name co -password yxcvbnm
 # Change password of Crypto Officer in order to unlock him
 # The password will be changed to "asdfghj"
 role changepw -name co -oldpw yxcvbnm -newpw asdfghj -force
+# Close lunacm
+exit
 ```
 
 Finally copy over the file *Chrystoki.conf* to your kubernetes folder as this contains the connection details for your DKE service to access the Cloud HSM.
@@ -298,17 +296,30 @@ kubectl apply -f ingress.yml --namespace dke
 kubectl get services --namespace dke
 ```
 
-To finally set a DNS record to map your chosen FQDN to the now available public IP, go to your DNS provider to do this. If you have chosen to use the cloudapp DNS provided by Azure, follow the steps shown in next video to set the required FQDN on the IP of your AKS loadbalancer resource.
+To finally set a DNS record to map your chosen FQDN to the now available public IP, go to your DNS provider to do this. If you have chosen to use the cloudapp DNS provided by Azure, follow the steps shown in this video ([link](https://youtu.be/ns6TMhuEkoA)) to set the required FQDN on the IP of your AKS loadbalancer resource.
 
-<<<<<VIDEO>>>>>
-
-Now your DKE service is reachable over your selected FQDN.
+Now your DKE service is reachable over your selected FQDN. Browse to *<https://YOUR_FQDN/DKE-Key-001>* and you should see a json response containing the details of your DKE key. **Please be patient with letsencrypt! It usually takes about 2-5 minutes to issue a publicly valid certificate to your DKE service!**
 
 ### 4. Register the DKE service in Azure Active Directory
 
+Better shown in a video: Watch [here](https://youtu.be/wgxUbJK9mBw) to see how you should integrate your deployed DKE service with your Azure AD in order to.
+
+Values you need for copy-pasting are...
+
+* The scope for the exposed API. This is called *user_impersonation* and will be appended to your service's FQDN in the WebUI.
+* Authorized client applications
+  * *c00e9d32-3c8d-4a7d-832b-029040e7db99* which is the ID of the Office Suite
+  * *d3590ed6-52b3-4102-aeff-aad2292ab01c* which is the ID of the Azure Information Protection Unified Labeling Client
+
 ### 5. Configure a Information Protection Label with DKE
 
+Better shown in a video: Watch [here](https://youtu.be/BduP1CHd_58) to see how to create DKE protected labels for your users in the Microsoft 365 Security and Compliance Center.
+
 ### 6. Configure a Windows 10 Client for DKE
+
+Better shown in a video: Watch [here](https://youtu.be/DLyN8L5zwCA) to see how to setup your Windows 10 clients to be able to use DKE labels to protect your most sensitive data.
+
+To apply to required registry modifications, you can also use the [.reg file](client/Enable_DKE.reg) within this repository.
 
 ## Additional references and resources
 
