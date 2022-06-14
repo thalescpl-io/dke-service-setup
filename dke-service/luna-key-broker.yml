@@ -19,7 +19,7 @@ spec:
       nodeSelector:
         "kubernetes.io/os": linux
       containers:
-        - image: YOUR_ACR_RESOURCE.azurecr.io/luna-key-broker-for-dke:v1.0
+        - image: YOUR_ACR_RESOURCE.azurecr.io/luna-key-broker-for-dke:v1.1
           name: luna-key-broker-for-dke
           imagePullPolicy: IfNotPresent
           resources:
@@ -33,7 +33,7 @@ spec:
             - containerPort: 5000
           volumeMounts:
             - name: luna-config
-              mountPath: /usr/safenet/lunaclient/config
+              mountPath: /usr/safenet/lunaclient/config/
             - name: rego-file
               mountPath: /usr/safenet/lunaclient/rego/
           env:
@@ -45,6 +45,12 @@ spec:
               value: /usr/safenet/lunaclient/libs/64/libCryptoki2_64.so
             - name: P11_TOKEN
               value: lkb-hsm
+            - name: USER_TYPE
+              value: "2"
+            - name: CACHING_ENABLED
+              value: "true"
+            - name: CACHING_HOURS
+              value: "1"
             - name: JWT_AUDIENCE
               value: "https://YOUR_DKE_SERVICE_FQDN"
             - name: JWT_ISSUER
