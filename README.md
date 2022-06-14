@@ -64,7 +64,7 @@ It is required to have the DKE service available for your clients under a FQDN w
 
 A checklist of what you need and what will be used in this guide:
 
-* The docker image of THALES' Luna Key Broker for DKE as a tar ball
+* The docker image of THALES' Luna Key Broker for DKE as a tar ball. This guide assumes version 1.1.
 * Access to a DPoD tenant to create a DPoD service. Else you can request your THALES contact to share details to an existing service.
 * Free DNS name for your DKE service
   * *lkb-on.azure.gegenleitner.eu* will be used.
@@ -136,7 +136,7 @@ The following commands must be called in the context of the lunacm cli tool. In 
 # Initialize the partition. During this process the cloning domain and
 # Partition Security Officer (PO/SO) credentials are set (both to the passphrase "qwertzu")
 partition init -label lkb-hsm -password qwertzu -domain qwertzu -force
-# Login as Security Officer
+# Login as Partition Security Officer
 role login -name po -password qwertzu
 # Initialize the Crypto Officer
 role init -name co -password yxcvbnm
@@ -146,6 +146,14 @@ role login -name co -password yxcvbnm
 # Change password of Crypto Officer in order to unlock him
 # The password will be changed to "asdfghj"
 role changepw -name co -oldpw yxcvbnm -newpw asdfghj -force
+# Initialize the Crypto User (ReadOnly-UserAccount)
+role init -name cu -password mnbvcxy
+# Logout and log back in a Crypto User
+role logout
+role login -name cu -password mnbvcxy
+# Change password of Crypto User in order to unlock him
+# The password will be changed to "jhgfdsa"
+role changepw -name cu -oldpw mnbvcxy -newpw jhgfdsa -force
 # Close lunacm
 exit
 ```
@@ -177,7 +185,7 @@ If you need more than one key for your DKE enabled labels later, just rename the
 cd ~/hsm
 # (Optional) if you opened a new SSH session, configure the environment again
 source ./setenv
-# Generate a unique/random key identifier
+# Generate a unique/random key identifier in the form of a50f7b86372b441ba77cb6f8598f1e35
 KEY_ID=$(head -c16 </dev/urandom|xxd -p -u)
 # Generate a key pair with the Certificate Management Utility
 # -modulusBits=2048               DKE currently only supports RSA 2048 keys
@@ -188,6 +196,8 @@ KEY_ID=$(head -c16 </dev/urandom|xxd -p -u)
 # -mech=pkcs                      RSA key generation mechanism to be used
 # -password=asdfghj               Define the Crypto Officer password to authenticate against the HSM service (if not defined, the command will prompt for it)
 ./bin/64/cmu generatekeypair -modulusBits=2048 -publicExponent=65537 -label=DKE-Key-001 -encrypt=1 -decrypt=1 -wrap=1 -unwrap=1 -id=$KEY_ID -mech=pkcs -password asdfghj
+# List the available Keys. It shall output two objects with the label "DKE-Key-001"
+./bin/64/cmu list -password asdfghj
 ```
 
 Now the HSM is fully functional and ready to be used for DKE!
@@ -225,16 +235,15 @@ az acr login --name $ACR_NAME
 ####
 cd ~/k8s
 # (optional)
-# If you received the zip-file 610-000693-001_SW_Docker_image_Luna_Key_Broker_for_Microsoft_DKE.zip
+# If you received the zip-file 610-000693-002_SW_Docker_image_Luna_Key_Broker_for_Microsoft_DKE.zip
 # then you have to first unzip it and copy the actual tar ball with the image to the working directory.
-unzip 610-000693-001_SW_Docker_image_Luna_Key_Broker_for_Microsoft_DKE.zip
-mv 610-000693-001_SW_Docker_image_Luna_Key_Broker_for_Microsoft_DKE/luna-key-broker-for-dke_v1.0.tar .
+unzip 610-000693-002_SW_Docker_image_Luna_Key_Broker_for_Microsoft_DKE.zip
 
 # Import the docker image to your local docker registry
-docker load -i luna-key-broker-for-dke_v1.0.tar
+docker load -i luna-key-broker-for-dke_v1.1.tar
 # Tag the docker image and push it to your ACR
-docker tag luna-key-broker-for-dke:v1.0 $ACR_NAME.azurecr.io/luna-key-broker-for-dke:v1.0
-docker push $ACR_NAME.azurecr.io/luna-key-broker-for-dke:v1.0
+docker tag luna-key-broker-for-dke:v1.1 $ACR_NAME.azurecr.io/luna-key-broker-for-dke:v1.1
+docker push $ACR_NAME.azurecr.io/luna-key-broker-for-dke:v1.1
 
 ####
 # Create kubernetes resources on AKS
@@ -247,28 +256,37 @@ kubectl create namespace dke
 # Add the ingress-nginx repository to your local helm
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
 # Use Helm to deploy an NGINX ingress controller
-helm install nginx-ingress ingress-nginx/ingress-nginx --namespace dke --set controller.replicaCount=2 --set controller.nodeSelector."beta\.kubernetes\.io/os"=linux --set defaultBackend.nodeSelector."beta\.kubernetes\.io/os"=linux --set controller.admissionWebhooks.patch.nodeSelector."beta\.kubernetes\.io/os"=linux
+helm install ingress-nginx ingress-nginx/ingress-nginx --namespace dke
+
+####
+# Query the public IP of the cluster's ingress for setting up DNS
+####
+# Get the public IP of the cluster ingress by quering the services.
+# The EXTERNAL-IP of the service "nginx-ingress-ingress-nginx-controller" must be set
+# as an A-Record for the chosen FQDN of your DKE service.
+kubectl get services --namespace dke
+
+# Now is the best time to configure your DNS to point the domain selected for
+# DKE_SERVICE_FQDN to the EXTERNAL-IP printed by the previous command.
+#
+# Also if you would like to configure a Azure-provided DNS, you can now go to the
+# AKS-Resource-Group (MC_<RG-Name>_<AKS-Name>_<REGION>) and look for the PublicIP object
+# that matches the EXTERNAL-IP. There you can configure a DNS-name for the PublicIP.
 
 # Create Secrets/Configs by uploading the previously created credentials and templates
 # Upload the Chrystoki.conf so that the LunaKeyBroker can connect to the Cloud HSM
 kubectl create secret generic luna-config-file --from-file=Chrystoki.conf --namespace dke
-# Upload the Crypto Officer password to grant the LunaKeyBroker access to the crypto material on the Cloud HSM
-kubectl create secret generic credentials --from-literal=password='asdfghj' --namespace dke
+# Upload the Crypto User password to grant the LunaKeyBroker access to the crypto material on the Cloud HSM
+kubectl create secret generic credentials --from-literal=password='jhgfdsa' --namespace dke
 # Upload a set of policies which define which user has access to which keys
 # The policy syntax is from the OpenPolicyAgent Framework. Take a look at https://www.openpolicyagent.org/ to read more about it.
 # The policies defined here grant every user access who holds an JWT containing a UPN value
 kubectl create secret generic auth-claim --from-file=opa_policies.rego --namespace dke
 
-# Label the dke namespace to disable resource validation
-kubectl label namespace dke cert-manager.io/disable-validation=true
-# Add the Jetstack Helm repository
-helm repo add jetstack https://charts.jetstack.io
-# Update your local Helm chart repository cache
-helm repo update
-# Install the cert-manager Helm chart
-helm install cert-manager jetstack/cert-manager --namespace dke --version v0.16.1 --set installCRDs=true --set nodeSelector."kubernetes\.io/os"=linux --set webhook.nodeSelector."kubernetes\.io/os"=linux --set cainjector.nodeSelector."kubernetes\.io/os"=linux
+# Install cert-manager as described at https://cert-manager.io/docs/installation/#default-static-install
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.8.0/cert-manager.yaml
 
-# Finally deploy some kubernetes resources via yaml files.
+# Finally deploy custom kubernetes resources via yaml files.
 
 # Tweak the cluster issuer template to contain your mail address for cert expiry notifications
 sed -i "s/YOUR_MAIL_ADDRESS/$CERT_MASTER/g" cluster-issuer.yml
@@ -287,13 +305,6 @@ sed -i "s/YOUR_DKE_SERVICE_FQDN/$DKE_SERVICE_FQDN/g" ingress.yml
 # Deploy an ingress route
 kubectl apply -f ingress.yml --namespace dke
 
-####
-# Query the public IP of the cluster's ingress for setting up DNS
-####
-# Get the public IP of the cluster ingress by quering the services.
-# The EXTERNAL-IP of the service "nginx-ingress-ingress-nginx-controller" must be set
-# as an A-Record for the chosen FQDN of your DKE service.
-kubectl get services --namespace dke
 ```
 
 To finally set a DNS record to map your chosen FQDN to the now available public IP, go to your DNS provider to do this. If you have chosen to use the cloudapp DNS provided by Azure, follow the steps shown in this video ([link](https://youtu.be/ns6TMhuEkoA)) to set the required FQDN on the IP of your AKS loadbalancer resource.
