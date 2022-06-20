@@ -52,7 +52,7 @@ If you do not have a working Microsoft 365 tenant yet, it is possible to sign up
 
 ### Hosting
 
-To host the DKE service via the Luna Key Broker image you need any docker container runtime. In this guide we will use Microsoft's AKS as kubernetes provider. Although this is not a good idea for production environments since the DKE service should be deployed outside the realms of Microsoft, we use it due to its easy availability for most existing Microsoft customers.
+To host the DKE service via the Luna Key Broker image you need any container runtime. In this guide we will use Microsoft's AKS as kubernetes provider. Although this is not a good idea for production environments since the DKE service should be deployed outside the realms of Microsoft, we use it due to its easy availability for most existing Microsoft customers.
 
 It is required to have the DKE service available for your clients under a FQDN without any prepended paths (<https://fqdn/path-extension/> is not allowed). So we need a dedicated DNS entry for our DKE service. Please make sure to have a free DNS record ready which we can later assign to the IP exposed by the AKS.
 
@@ -64,11 +64,11 @@ It is required to have the DKE service available for your clients under a FQDN w
 
 A checklist of what you need and what will be used in this guide:
 
-* The docker image of THALES' Luna Key Broker for DKE as a tar ball. This guide assumes version 1.1.
+* The container image of THALES' Luna Key Broker for DKE as a tar ball. This guide assumes version 1.1.
 * Access to a DPoD tenant to create a DPoD service. Else you can request your THALES contact to share details to an existing service.
 * Free DNS name for your DKE service
   * *lkb-on.azure.gegenleitner.eu* will be used.
-  * If you do not want to use an own domain, you can also facilitate Azure's cloudapp domain to assign a FQDN.
+  * In the past it was possible to use an Azure provided DNS-Entry. Now it is required to use a FQDN that ends in a trusted "Custom Domain" in AzureAD.
 * Azure account capable of deploying azure resources
 * Working M365 tenant
 * Tool for SSH-ing into your Ubuntu Server (i. e. putty) on your workstation
@@ -268,10 +268,6 @@ kubectl get services --namespace dke
 
 # Now is the best time to configure your DNS to point the domain selected for
 # DKE_SERVICE_FQDN to the EXTERNAL-IP printed by the previous command.
-#
-# Also if you would like to configure a Azure-provided DNS, you can now go to the
-# AKS-Resource-Group (MC_<RG-Name>_<AKS-Name>_<REGION>) and look for the PublicIP object
-# that matches the EXTERNAL-IP. There you can configure a DNS-name for the PublicIP.
 
 # Create Secrets/Configs by uploading the previously created credentials and templates
 # Upload the Chrystoki.conf so that the LunaKeyBroker can connect to the Cloud HSM
@@ -307,7 +303,7 @@ kubectl apply -f ingress.yml --namespace dke
 
 ```
 
-To finally set a DNS record to map your chosen FQDN to the now available public IP, go to your DNS provider to do this. If you have chosen to use the cloudapp DNS provided by Azure, follow the steps shown in this video ([link](https://youtu.be/ns6TMhuEkoA)) to set the required FQDN on the IP of your AKS loadbalancer resource.
+To finally set a DNS record to map your chosen FQDN to the now available public IP, go to your DNS provider to do this.
 
 Now your DKE service is reachable over your selected FQDN. Browse to *<https://YOUR_FQDN/DKE-Key-001>* and you should see a json response containing the details of your DKE key. **Please be patient with letsencrypt! It usually takes about 2-5 minutes to issue a publicly valid certificate to your DKE service!**
 
