@@ -253,10 +253,15 @@ cp ~/thales-dke-service-setup/dke-service/* .
 
 # Create a namespace for your dke service resources
 kubectl create namespace dke
+
+# (refer to https://learn.microsoft.com/en-us/azure/aks/ingress-basic?tabs=azure-cli on how to deploy ingress-nginx on AKS)
 # Add the ingress-nginx repository to your local helm
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
 # Use Helm to deploy an NGINX ingress controller
-helm install ingress-nginx ingress-nginx/ingress-nginx --namespace dke
+# (The last line is only required on AKS clusters. Can be omitted on other k8s clusters. See https://github.com/Azure/AKS/issues/2903 fpr explainations)
+helm install ingress-nginx ingress-nginx/ingress-nginx \
+  --namespace dke \
+  --set controller.service.annotations."service\.beta\.kubernetes\.io/azure-load-balancer-health-probe-request-path"=/healthz
 
 ####
 # Query the public IP of the cluster's ingress for setting up DNS
