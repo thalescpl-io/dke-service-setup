@@ -71,8 +71,8 @@ A checklist of what you need and what will be used in this guide:
   * In the past it was possible to use an Azure provided DNS-Entry. Now it is required to use a FQDN that ends in a trusted "Custom Domain" in AzureAD.
 * Azure account capable of deploying azure resources
 * Working M365 tenant
-* Tool for SSH-ing into your Ubuntu Server (i. e. putty) on your workstation
-* Tool for SSH-Copy files to your Ubuntu Server (i. e. WinSCP, scp or pscp) on your workstation
+* Tool for SSH-ing into your CentOS server (i. e. putty) on your workstation
+* Tool for SSH-Copy files to your CentOS server (i. e. WinSCP, scp or pscp) on your workstation
   * *WinSCP* will be used
 * RDP-Client on your workstation to access the Windows 10 test machine
   * Standard *Remote Desktop Connection* from Windows 10 will be used
@@ -82,7 +82,7 @@ A checklist of what you need and what will be used in this guide:
 Watch this small video ([link](https://youtu.be/45EN6CySi9c)) to setup all required resources:
 
 * New dedicated resource group (*luna-key-broker-demo*)
-* Ubuntu Server 20.04 LTS (*management-linux*)
+* CentOS 7 (*management-linux*)
 * AKS cluster with ACR (*dke-cluster* and *dkerepository*)
   * *dkerepository* for ACR might be shown as taken, because this must be a unique name across Azure. If this is the case, just select another name (required changes will be noted in the guide later)
 * Windows 10 client (*dke-client*)
@@ -235,15 +235,15 @@ az acr login --name $ACR_NAME
 ####
 cd ~/k8s
 # (optional)
-# If you received the zip-file 610-000693-002_SW_Docker_image_Luna_Key_Broker_for_Microsoft_DKE.zip
+# If you received the zip-file 610-000862-001_SW_Docker_Image_Luna_Key_Broker_for_Microsoft_DKE_centos7_v1.1.2_RevA.zip
 # then you have to first unzip it and copy the actual tar ball with the image to the working directory.
-unzip 610-000693-002_SW_Docker_image_Luna_Key_Broker_for_Microsoft_DKE.zip
+unzip 610-000862-001_SW_Docker_Image_Luna_Key_Broker_for_Microsoft_DKE_centos7_v1.1.2_RevA.zip
 
 # Import the docker image to your local docker registry
-docker load -i luna-key-broker-for-dke_v1.1.tar
+docker load -i luna-key-broker-for-dke-centos7_v1.1.2.tar
 # Tag the docker image and push it to your ACR
-docker tag luna-key-broker-for-dke:v1.1 $ACR_NAME.azurecr.io/luna-key-broker-for-dke:v1.1
-docker push $ACR_NAME.azurecr.io/luna-key-broker-for-dke:v1.1
+docker tag luna-key-broker-for-dke-centos7:v1.1.2 $ACR_NAME.azurecr.io/luna-key-broker-for-dke-centos7:v1.1.2
+docker push $ACR_NAME.azurecr.io/luna-key-broker-for-dke-centos7:v1.1.2
 
 ####
 # Create kubernetes resources on AKS
