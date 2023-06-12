@@ -82,14 +82,16 @@ A checklist of what you need and what will be used in this guide:
 Watch this small video ([link](https://youtu.be/45EN6CySi9c)) to setup all required resources:
 
 * New dedicated resource group (*luna-key-broker-demo*)
-* CentOS 7 (*management-linux*)
+* Management Linux
+  * CentOS 7 (officially supported platform)
+  *  Ubuntu (best efforts supported platform)
 * AKS cluster with ACR (*dke-cluster* and *dkerepository*)
   * *dkerepository* for ACR might be shown as taken, because this must be a unique name across Azure. If this is the case, just select another name (required changes will be noted in the guide later)
 * Windows 10 client (*dke-client*)
 
-#### Install required software on Ubuntu
+#### Install required software on Linux
 
-Follow the steps below or just copy-paste them into an open SSH-session on your Ubuntu Server:
+For installation on a Ubuntu Server, follow the steps below or just copy-paste them into an open SSH-session on your Ubuntu Server:
 
 ```shell
 # Change into your user's home directory
@@ -100,7 +102,24 @@ sudo apt-get update && sudo apt-get install -y git unzip
 git clone https://github.com/martingegenleitner/thales-dke-service-setup.git
 # Call the installer script to get all required tools onto your management machine
 chmod +x ~/thales-dke-service-setup/mgmt-linux/install_tooling.sh
-~/thales-dke-service-setup/mgmt-linux/install_tooling.sh
+~/thales-dke-service-setup/mgmt-linux/install_tooling_ubuntu.sh
+# Create a few directories to organize your tooling
+mkdir -p ~/hsm
+mkdir -p ~/k8s
+```
+
+For installation on a CentOS 7 Server, Follow the steps below or just copy-paste them into an open SSH-session on your CentOS Server:
+
+```shell
+# Change into your user's home directory
+cd ~
+# Ensure git is installed
+sudo yum update && sudo yum install git unzip
+# Checkout this git repository to have all scripts at hand
+git clone https://github.com/martingegenleitner/thales-dke-service-setup.git
+# Call the installer script to get all required tools onto your management machine
+chmod +x ~/thales-dke-service-setup/mgmt-linux/install_tooling.sh
+~/thales-dke-service-setup/mgmt-linux/install_tooling_centos.sh
 # Create a few directories to organize your tooling
 mkdir -p ~/hsm
 mkdir -p ~/k8s
